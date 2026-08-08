@@ -1,25 +1,32 @@
 "use client";
 
 import { useAppStore } from "../store/useAppStore";
-import { Mountain } from "lucide-react"; // Using Lucide for a placeholder pyramid icon
+import { PyramidLogo } from "../components/ui/PyramidLogo";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 export default function Home() {
   const { isAuthenticated, loginAsGuest } = useAppStore();
+  const router = useRouter();
 
-  if (isAuthenticated) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-background">
-        <p>Dashboard coming next...</p>
-      </div>
-    );
-  }
+  // If already authenticated, push them to the tasks dashboard
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push("/dashboard"); // <-- Update this
+    }
+  }, [isAuthenticated, router]);
+
+  const handleGuestLogin = () => {
+    loginAsGuest();
+    router.push("/dashboard"); // <-- And this
+  };
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-white p-4">
       {/* Logo */}
       <div className="mb-6 flex items-center gap-2">
-        <div className="flex h-8 w-8 items-center justify-center rounded bg-black text-white">
-          <Mountain size={20} />
+        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#111111] text-white">
+          <PyramidLogo />
         </div>
         <span className="text-xl font-bold text-black">Pyramid</span>
       </div>
@@ -37,7 +44,7 @@ export default function Home() {
 
         <div className="flex flex-col gap-3">
           <button
-            onClick={loginAsGuest}
+            onClick={handleGuestLogin}
             className="w-full rounded-full bg-black py-3 text-sm font-medium text-white transition-opacity hover:bg-gray-800"
           >
             Continue as Guest
@@ -67,7 +74,6 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Footer text */}
       <p className="mt-8 max-w-xs text-center text-xs text-gray-400">
         By clicking continue, you agree to our{" "}
         <a href="#" className="underline">
