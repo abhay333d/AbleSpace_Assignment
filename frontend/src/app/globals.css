@@ -1,26 +1,48 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
+@theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-sidebar: var(--sidebar-bg);
+  --color-border: var(--border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
 }
 
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #ffffff;
+    --foreground: #0f172a;
+    --sidebar-bg: #f8fafc;
+    --border: #e2e8f0;
+    
+    /* Default Blue Color Mode */
+    --primary: #3b82f6; 
+    --primary-foreground: #ffffff;
   }
-}
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  .dark {
+    --background: #0f172a;
+    --foreground: #f8fafc;
+    --sidebar-bg: #1e293b;
+    --border: #334155;
+  }
+
+  /* Color Modes */
+  .theme-amber { --primary: #f59e0b; }
+  .theme-pink { --primary: #ec4899; }
+  .theme-rose { --primary: #f43f5e; }
+  .theme-emerald { --primary: #10b981; }
+  .theme-black { 
+    --primary: #000000; 
+  }
+  .dark .theme-black {
+    --primary: #ffffff;
+    --primary-foreground: #000000;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+  }
 }
