@@ -1,7 +1,8 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { useAppStore } from "@/store/useAppStore";
+import { usePathname, useRouter } from "next/navigation"; // <-- Routing hooks
+import { useAppStore, type ColorMode } from "@/store/useAppStore";
 import {
   Sidebar,
   SidebarContent,
@@ -31,11 +32,13 @@ import {
   Check,
 } from "lucide-react";
 
-type ColorMode = "amber" | "blue" | "pink" | "rose" | "emerald" | "black";
-
 export function AppSidebar() {
   const { theme, setTheme } = useTheme();
   const { colorMode, setColorMode } = useAppStore();
+
+  // Initialize router and pathname
+  const pathname = usePathname();
+  const router = useRouter();
 
   const colors: { name: string; value: ColorMode; hex: string }[] = [
     { name: "Amber", value: "amber", hex: "bg-[#f59e0b]" },
@@ -57,7 +60,7 @@ export function AppSidebar() {
               className="w-full justify-between hover:bg-transparent"
             >
               <div className="flex items-center gap-3">
-                <Avatar className="h-8 w-8 rounded-lg">
+                <Avatar className="h-8 w-8 rounded-lg border border-border">
                   <AvatarImage
                     src="https://github.com/shadcn.png"
                     alt="Dexter"
@@ -82,14 +85,25 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              {/* Tasks Link */}
               <SidebarMenuItem>
-                <SidebarMenuButton isActive className="gap-3 cursor-pointer">
+                <SidebarMenuButton
+                  isActive={pathname === "/dashboard" || pathname === "/"}
+                  onClick={() => router.push("/dashboard")}
+                  className={`gap-3 cursor-pointer ${pathname === "/dashboard" || pathname === "/" ? "" : "text-gray-500 hover:text-foreground"}`}
+                >
                   <LayoutGrid className="h-4 w-4" />
                   <span>Tasks</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+
+              {/* Projects Link */}
               <SidebarMenuItem>
-                <SidebarMenuButton className="gap-3 text-gray-500 hover:text-foreground cursor-pointer">
+                <SidebarMenuButton
+                  isActive={pathname.startsWith("/projects")}
+                  onClick={() => router.push("/projects")}
+                  className={`gap-3 cursor-pointer ${pathname.startsWith("/projects") ? "" : "text-gray-500 hover:text-foreground"}`}
+                >
                   <FolderKanban className="h-4 w-4" />
                   <span>Projects</span>
                 </SidebarMenuButton>
@@ -116,13 +130,13 @@ export function AppSidebar() {
               <DropdownMenuContent side="right" align="end" className="w-40">
                 <DropdownMenuItem
                   onClick={() => setTheme("light")}
-                  className="justify-between"
+                  className="justify-between cursor-pointer"
                 >
                   Light {theme === "light" && <Check className="h-4 w-4" />}
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() => setTheme("dark")}
-                  className="justify-between"
+                  className="justify-between cursor-pointer"
                 >
                   Dark {theme === "dark" && <Check className="h-4 w-4" />}
                 </DropdownMenuItem>
@@ -146,7 +160,7 @@ export function AppSidebar() {
                   <DropdownMenuItem
                     key={c.value}
                     onClick={() => setColorMode(c.value)}
-                    className="flex items-center justify-between"
+                    className="flex items-center justify-between cursor-pointer"
                   >
                     <div className="flex items-center gap-2">
                       <div
@@ -161,8 +175,12 @@ export function AppSidebar() {
             </DropdownMenu>
           </SidebarMenuItem>
 
+          {/* ADDED: Link to Settings Page */}
           <SidebarMenuItem>
-            <SidebarMenuButton className="gap-3 text-gray-500 hover:text-foreground cursor-pointer">
+            <SidebarMenuButton
+              onClick={() => router.push("/settings")}
+              className="gap-3 text-gray-500 hover:text-foreground cursor-pointer"
+            >
               <Settings className="h-4 w-4" />
               <span>Settings</span>
             </SidebarMenuButton>

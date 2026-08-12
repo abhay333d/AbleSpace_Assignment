@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
-type Theme = "light" | "dark";
-type ColorMode = "blue" | "amber" | "pink" | "rose" | "emerald" | "black";
+export type Theme = "light" | "dark";
+export type ColorMode = "blue" | "amber" | "pink" | "rose" | "emerald" | "black";
 
 interface AppState {
   // Auth state

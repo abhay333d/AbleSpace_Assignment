@@ -14,27 +14,26 @@ export default function DashboardLayout({
   const { isAuthenticated } = useAppStore();
   const router = useRouter();
 
-  // Protect the route: redirect to login if not authenticated
   useEffect(() => {
     if (!isAuthenticated) {
       router.push("/");
     }
   }, [isAuthenticated, router]);
 
-  if (!isAuthenticated) return null; // Prevent hydration flash
+  if (!isAuthenticated) return null;
 
   return (
     <SidebarProvider>
       <div className="flex h-screen w-full overflow-hidden bg-background text-foreground">
         <AppSidebar />
-        <main className="flex flex-1 flex-col min-w-0">
-          {/* Mobile Sidebar Trigger */}
-          <header className="flex h-14 items-center border-b border-border px-4 lg:px-6">
-            <SidebarTrigger className="mr-4 lg:hidden" />
+        <main className="flex h-full flex-1 flex-col overflow-hidden">
+          {/* Mobile Sidebar Trigger - Now completely hidden on desktop (lg:hidden) */}
+          <header className="flex h-14 flex-shrink-0 items-center border-b border-border px-4 lg:hidden">
+            <SidebarTrigger />
           </header>
 
-          {/* Main Content Rendered Here */}
-          <div className="flex-1 overflow-hidden">{children}</div>
+          {/* Page Content Rendered Here - Swapped to flex-1 to fill the space perfectly */}
+          <div className="flex flex-1 flex-col overflow-hidden">{children}</div>
         </main>
       </div>
     </SidebarProvider>
