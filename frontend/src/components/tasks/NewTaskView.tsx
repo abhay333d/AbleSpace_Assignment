@@ -17,7 +17,7 @@ import {
   CheckCircle2,
   Circle,
 } from "lucide-react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export function NewTaskView() {
   const router = useRouter();
@@ -28,17 +28,17 @@ export function NewTaskView() {
   // Auto-open the right panel ONLY on desktop devices on initial load
   useEffect(() => {
     if (typeof window !== "undefined" && window.innerWidth >= 1024) {
-      setIsRightPanelOpen(true);
+      setTimeout(() => setIsRightPanelOpen(true), 0);
     }
   }, []);
 
   // Form State
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [status, setStatus] = useState("To Do");
-  const [priority, setPriority] = useState("Medium");
-  const [project, setProject] = useState("TODO TASK MANAGEMENT");
-  const [dueDate, setDueDate] = useState("13 Aug 2026");
+  const [status] = useState("To Do");
+  const [priority] = useState("Medium");
+  const [project] = useState("TODO TASK MANAGEMENT");
+  const [dueDate] = useState("13 Aug 2026");
 
   // Array States
   const [labels, setLabels] = useState<string[]>(["t1", "t2"]);
@@ -72,13 +72,19 @@ export function NewTaskView() {
           labels,
           resources,
           subtasks,
-          dueDate: new Date(dueDate),
+          // Safely convert the date to an ISO string which the backend expects
+          dueDate: new Date(dueDate).toISOString(),
           reporter: "Dexter",
         }),
       });
 
       if (response.ok) {
         router.push("/dashboard");
+      } else {
+        // THIS WILL CATCH THE EXACT VALIDATION ERRORS!
+        const errorData = await response.json();
+        console.error("Backend Validation Failed:", errorData);
+        alert(`Validation Error: ${errorData.message.join(", ")}`);
       }
     } catch (error) {
       console.error("Failed to create task:", error);

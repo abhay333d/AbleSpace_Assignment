@@ -35,7 +35,7 @@ export default function Home() {
       <div className="w-full max-w-md rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
         <div className="mb-8 text-center">
           <h1 className="mb-2 text-2xl font-bold text-black">
-            Let's get back on track
+            Let&apos;s get back on track
           </h1>
           <p className="text-sm text-gray-500">
             Enter your email below to login to your account.

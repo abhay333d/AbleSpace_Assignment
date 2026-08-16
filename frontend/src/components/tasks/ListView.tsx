@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Task, Status } from "@/types/task";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -26,99 +26,6 @@ interface ListViewProps {
   };
 }
 
-const initialTasks: Task[] = [
-  {
-    id: "1",
-    title: "Write API Documentation",
-    status: "To Do",
-    priority: "High",
-    assignee: {
-      name: "Admin",
-      initials: "AD",
-      avatar: "https://github.com/shadcn.png",
-    },
-    dueDate: "29 Jul",
-    labels: [],
-  },
-  {
-    id: "2",
-    title: "Implement Search Function",
-    status: "To Do",
-    priority: "Low",
-    assignee: {
-      name: "Admin",
-      initials: "AD",
-      avatar: "https://github.com/shadcn.png",
-    },
-    dueDate: "29 Jul",
-    labels: [],
-  },
-  {
-    id: "3",
-    title: "Deploy to Production",
-    status: "To Do",
-    priority: "Medium",
-    assignee: {
-      name: "Admin",
-      initials: "AD",
-      avatar: "https://github.com/shadcn.png",
-    },
-    dueDate: "29 Jul",
-    labels: [],
-  },
-  {
-    id: "4",
-    title: "Code Review Completed",
-    status: "Doing",
-    priority: "High",
-    assignee: {
-      name: "Admin",
-      initials: "AD",
-      avatar: "https://github.com/shadcn.png",
-    },
-    dueDate: "29 Jul",
-    labels: [],
-  },
-  {
-    id: "5",
-    title: "Design Mockups Finalized",
-    status: "Doing",
-    priority: "Medium",
-    assignee: {
-      name: "Admin",
-      initials: "AD",
-      avatar: "https://github.com/shadcn.png",
-    },
-    dueDate: "29 Jul",
-    labels: [],
-  },
-  {
-    id: "6",
-    title: "Feature Testing Passed",
-    status: "Completed",
-    priority: "Urgent",
-    assignee: {
-      name: "QA Team",
-      initials: "QA",
-      avatar: "https://github.com/shadcn.png",
-    },
-    dueDate: "30 Jul",
-    labels: [],
-  },
-  {
-    id: "7",
-    title: "UI Design Updated",
-    status: "Completed",
-    priority: "High",
-    assignee: {
-      name: "Designer",
-      initials: "DS",
-      avatar: "https://github.com/shadcn.png",
-    },
-    dueDate: "31 Jul",
-    labels: [],
-  },
-];
 
 const statuses: Status[] = ["To Do", "Doing", "Completed", "On Hold"];
 
@@ -154,7 +61,21 @@ export function ListView({
   onTaskClick,
   filterPriority,
 }: ListViewProps) {
-  const [tasks] = useState<Task[]>(initialTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const response = await fetch("http://localhost:3001/tasks");
+        const data = await response.json();
+        setTasks(data);
+      } catch (error) {
+        console.error("Failed to fetch tasks:", error);
+      }
+    };
+
+    fetchTasks();
+  }, []);
   const [collapsedSections, setCollapsedSections] = useState<
     Record<string, boolean>
   >({});

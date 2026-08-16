@@ -42,7 +42,7 @@ export function TaskDetailView({ task, onClose }: TaskDetailViewProps) {
   // Auto-open the right panel ONLY on desktop devices on initial load
   useEffect(() => {
     if (typeof window !== "undefined" && window.innerWidth >= 1024) {
-      setIsRightPanelOpen(true);
+      setTimeout(() => setIsRightPanelOpen(true), 0);
     }
   }, []);
 

@@ -17,7 +17,6 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
-// The interface telling TypeScript what props to expect
 interface KanbanBoardProps {
   onTaskClick: (task: Task) => void;
   filterPriority: string;
@@ -31,109 +30,6 @@ interface KanbanBoardProps {
   };
 }
 
-const initialTasks: Task[] = [
-  {
-    id: "1",
-    title: "Write API Documentation",
-    status: "To Do",
-    priority: "High",
-    assignee: {
-      name: "Admin",
-      initials: "AD",
-      avatar: "https://github.com/shadcn.png",
-    },
-    dueDate: "29 Jul",
-    labels: ["Deployment", "Deployment"],
-  },
-  {
-    id: "2",
-    title: "Implement Search Function",
-    status: "To Do",
-    priority: "Low",
-    assignee: {
-      name: "Admin",
-      initials: "AD",
-      avatar: "https://github.com/shadcn.png",
-    },
-    dueDate: "29 Jul",
-    labels: ["Deployment", "Deployment"],
-  },
-  {
-    id: "3",
-    title: "Deploy to Production",
-    status: "To Do",
-    priority: "Medium",
-    assignee: {
-      name: "Admin",
-      initials: "AD",
-      avatar: "https://github.com/shadcn.png",
-    },
-    dueDate: "29 Jul",
-    labels: ["Deployment", "Deployment"],
-  },
-  {
-    id: "4",
-    title: "Code Review Completed",
-    status: "Doing",
-    priority: "High",
-    assignee: {
-      name: "Admin",
-      initials: "AD",
-      avatar: "https://github.com/shadcn.png",
-    },
-    dueDate: "29 Jul",
-    labels: ["Deployment", "Deployment"],
-  },
-  {
-    id: "5",
-    title: "Design Mockups Finalized",
-    status: "Doing",
-    priority: "Medium",
-    assignee: {
-      name: "Admin",
-      initials: "AD",
-      avatar: "https://github.com/shadcn.png",
-    },
-    dueDate: "29 Jul",
-    labels: ["Deployment", "Deployment"],
-  },
-  {
-    id: "6",
-    title: "Feature Testing Passed",
-    status: "Completed",
-    priority: "Urgent",
-    assignee: {
-      name: "QA Team",
-      initials: "QA",
-      avatar: "https://github.com/shadcn.png",
-    },
-    dueDate: "30 Jul",
-    labels: ["Testing", "Passed"],
-  },
-  {
-    id: "7",
-    title: "UI Design Updated",
-    status: "Completed",
-    priority: "High",
-    assignee: {
-      name: "Designer",
-      initials: "DS",
-      avatar: "https://github.com/shadcn.png",
-    },
-    dueDate: "31 Jul",
-    labels: ["Design", "Updated"],
-  },
-  {
-    id: "8",
-    title: "Security Audit Scheduled",
-    status: "Completed",
-    priority: "Low",
-    assignee: { name: "Security", initials: "SC" },
-    dueDate: "01 Aug",
-    labels: ["Audit", "Scheduled"],
-  },
-];
-
 const initialColumns: { title: string; id: Status }[] = [
   { title: "To Do", id: "To Do" },
   { title: "Doing", id: "Doing" },
@@ -141,20 +37,68 @@ const initialColumns: { title: string; id: Status }[] = [
   { title: "On Hold", id: "On Hold" },
 ];
 
-// Pass the props into the component signature here
 export function KanbanBoard({
   visibleFields,
   onTaskClick,
   filterPriority,
 }: KanbanBoardProps) {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [orderedColumns, setOrderedColumns] = useState(initialColumns);
   const [isMounted, setIsMounted] = useState(false);
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const boardRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    setIsMounted(true);
+    setTimeout(() => setIsMounted(true), 0);
+
+    const fetchTasks = async () => {
+      try {
+        const response = await fetch("http://localhost:3001/tasks");
+        const data = await response.json();
+
+        if (Array.isArray(data)) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const formattedTasks = data.map((t: any) => ({
+            ...t,
+            id: String(t._id || t.id || Math.random()),
+          }));
+          setTasks(formattedTasks);
+        } else {
+          setTasks([]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch tasks:", error);
+        setTasks([]);
+      }
+    };
+
+    fetchTasks();
   }, []);
+
+  // Native DOM event listener to handle horizontal scrolling safely
+  useEffect(() => {
+    const board = boardRef.current;
+    if (!board) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      const target = e.target as HTMLElement;
+      const column = target.closest(".task-list-container");
+
+      // If hovering over a column that needs vertical scrolling, let it scroll vertically
+      if (column && column.scrollHeight > column.clientHeight) {
+        return;
+      }
+
+      // Convert vertical scroll to horizontal board scroll
+      if (e.deltaY !== 0) {
+        e.preventDefault();
+        board.scrollLeft += e.deltaY;
+      }
+    };
+
+    // Attach non-passive listener
+    board.addEventListener("wheel", handleWheel, { passive: false });
+    return () => board.removeEventListener("wheel", handleWheel);
+  }, [isMounted]);
 
   const onDragEnd = (result: DropResult) => {
     const { source, destination, draggableId, type } = result;
@@ -207,16 +151,6 @@ export function KanbanBoard({
     }
   };
 
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement;
-    if (target.closest(".task-list-container")) return;
-
-    if (containerRef.current && e.deltaY !== 0) {
-      containerRef.current.scrollLeft += e.deltaY;
-      e.preventDefault();
-    }
-  };
-
   if (!isMounted) return null;
 
   return (
@@ -226,14 +160,13 @@ export function KanbanBoard({
           <div
             ref={(el) => {
               provided.innerRef(el);
-              containerRef.current = el;
+              boardRef.current = el; // Store reference for our scroll hijack
             }}
             {...provided.droppableProps}
-            onWheel={handleWheel}
             className="flex h-full w-full items-start gap-6 overflow-x-auto overflow-y-hidden pb-6 pt-2 px-1 select-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           >
             {orderedColumns.map((col, index) => {
-              const columnTasks = tasks
+              const columnTasks = (tasks || [])
                 .filter((t) => t.status === col.id)
                 .filter(
                   (t) =>
@@ -288,8 +221,8 @@ export function KanbanBoard({
                           >
                             {columnTasks.map((task, taskIndex) => (
                               <Draggable
-                                key={task.id}
-                                draggableId={task.id}
+                                key={String(task.id)}
+                                draggableId={String(task.id)}
                                 index={taskIndex}
                               >
                                 {(provided, snapshot) => (
@@ -313,7 +246,6 @@ export function KanbanBoard({
                                       </button>
                                     </div>
 
-                                    {/* Conditionally Rendered Elements Based on visibleFields */}
                                     {(visibleFields.members ||
                                       visibleFields.dueDate) && (
                                       <div className="flex items-center justify-between text-xs">
@@ -321,31 +253,44 @@ export function KanbanBoard({
                                           <div className="flex items-center gap-2">
                                             <Avatar className="h-6 w-6">
                                               <AvatarImage
-                                                src={task.assignee.avatar}
+                                                src={
+                                                  task.assignee?.avatar ||
+                                                  "https://github.com/shadcn.png"
+                                                }
                                               />
                                               <AvatarFallback className="text-[10px]">
-                                                {task.assignee.initials}
+                                                {task.assignee?.initials ||
+                                                  "U"}
                                               </AvatarFallback>
                                             </Avatar>
                                             <span className="font-medium text-gray-700 dark:text-gray-300">
-                                              {task.assignee.name}
+                                              {task.assignee?.name ||
+                                                "Unassigned"}
                                             </span>
                                           </div>
                                         ) : (
                                           <div />
                                         )}
 
-                                        {visibleFields.dueDate && (
-                                          <div className="flex items-center gap-1.5 rounded-md bg-red-50 px-2 py-1 text-[11px] font-medium text-red-500 dark:bg-red-500/10 dark:text-red-400">
-                                            <Calendar className="h-3 w-3" />
-                                            <span>{task.dueDate}</span>
-                                          </div>
-                                        )}
+                                        {visibleFields.dueDate &&
+                                          task.dueDate && (
+                                            <div className="flex items-center gap-1.5 rounded-md bg-red-50 px-2 py-1 text-[11px] font-medium text-red-500 dark:bg-red-500/10 dark:text-red-400">
+                                              <Calendar className="h-3 w-3" />
+                                              <span>
+                                                {new Date(
+                                                  task.dueDate,
+                                                ).toLocaleDateString("en-GB", {
+                                                  day: "numeric",
+                                                  month: "short",
+                                                })}
+                                              </span>
+                                            </div>
+                                          )}
                                       </div>
                                     )}
 
                                     {visibleFields.labels &&
-                                      task.labels.length > 0 && (
+                                      task.labels?.length > 0 && (
                                         <div className="flex flex-wrap gap-2">
                                           {task.labels.map((label, idx) => (
                                             <span
