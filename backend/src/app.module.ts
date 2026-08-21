@@ -15,6 +15,8 @@ import { TasksModule } from './tasks/tasks.module';
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         uri: configService.get<string>('MONGODB_URI'),
+        bufferCommands: false,
+        serverSelectionTimeoutMS: 5000,
       }),
       inject: [ConfigService],
     }),
