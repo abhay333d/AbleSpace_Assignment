@@ -4,36 +4,45 @@ import { AppModule } from '../src/app.module';
 import { ValidationPipe } from '@nestjs/common';
 import express from 'express';
 
-const server = express();
+let cachedServer: any;
 
-export const createNestServer = async (expressInstance) => {
-  const app = await NestFactory.create(
-    AppModule,
-    new ExpressAdapter(expressInstance),
-  );
+async function bootstrap() {
+  if (!cachedServer) {
+    const expressApp = express();
+    const app = await NestFactory.create(
+      AppModule,
+      new ExpressAdapter(expressApp),
+    );
 
-  app.enableCors({
-    origin:
-      process.env.FRONTEND_URL ||
-      'https://able-space-assignment-ruby.vercel.app',
-    credentials: true,
-  });
+    app.enableCors({
+      origin:
+        process.env.FRONTEND_URL ||
+        'https://able-space-assignment-ruby.vercel.app',
+      credentials: true,
+    });
 
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
 
-  app.setGlobalPrefix('api');
+    app.setGlobalPrefix('api');
 
-  await app.init();
-};
+    await app.init();
+    cachedServer = expressApp;
+  }
+  return cachedServer;
+}
 
-createNestServer(server)
-  .then(() => console.log('Nest Ready on Vercel'))
-  .catch((err) => console.error('Nest Error', err));
-
-export default server;
+export default async function (req: any, res: any) {
+  try {
+    const server = await bootstrap();
+    return server(req, res);
+  } catch (err) {
+    console.error('Nest Serverless Error:', err);
+    res.status(500).json({ error: 'Internal Server Error (Serverless Init)', details: err.message });
+  }
+}
