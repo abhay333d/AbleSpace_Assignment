@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import { AppModule } from '../src/app.module';
@@ -13,7 +12,6 @@ async function bootstrap() {
     const app = await NestFactory.create(
       AppModule,
       new ExpressAdapter(expressApp),
-      { logger: ['error', 'warn', 'log'] },
     );
 
     app.enableCors({
@@ -43,11 +41,13 @@ export default async function (req: any, res: any) {
   try {
     const server = await bootstrap();
     return server(req, res);
-  } catch (err: any) {
-    console.error('Nest Serverless Bootstrap Error:', err?.message, err?.stack);
-    res.status(500).json({
-      error: 'Internal Server Error',
-      details: err?.message,
-    });
+  } catch (err) {
+    console.error('Nest Serverless Error:', err);
+    res
+      .status(500)
+      .json({
+        error: 'Internal Server Error (Serverless Init)',
+        details: err.message,
+      });
   }
 }

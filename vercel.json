@@ -6,14 +6,14 @@
       "use": "@vercel/next"
     },
     {
-      "src": "backend/api/handler.js",
+      "src": "backend/api/index.ts",
       "use": "@vercel/node"
     }
   ],
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/backend/api/handler.js"
+      "destination": "/backend/api/index.ts"
     },
     {
       "source": "/(.*)",
