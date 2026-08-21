@@ -8,6 +8,7 @@ import { TasksModule } from './tasks/tasks.module';
     // 1. Load the .env file globally
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: ['.env', '../.env'],
     }),
 
     // 2. Safely load the MongoDB URI from the .env file
