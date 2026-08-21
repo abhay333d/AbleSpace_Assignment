@@ -57,7 +57,9 @@ export function TaskDetailView({ task, onClose }: TaskDetailViewProps) {
 
   const handleDeleteTask = async () => {
     try {
-      await axios.delete(`http://localhost:3001/tasks/${localTask.id}`);
+      await axios.delete(
+        `${process.env.NEXT_PUBLIC_API_URL}/tasks/${localTask.id}`,
+      );
       onClose(); // Automatically goes back to dashboard, which will re-fetch data!
     } catch (error) {
       console.error("Failed to delete task:", error);
@@ -70,9 +72,12 @@ export function TaskDetailView({ task, onClose }: TaskDetailViewProps) {
       setLocalTask((prev) => ({ ...prev, [field]: value }));
 
       // Silently update the database in the background
-      await axios.patch(`http://localhost:3001/tasks/${localTask.id}`, {
-        [field]: value,
-      });
+      await axios.patch(
+        `${process.env.NEXT_PUBLIC_API_URL}/tasks/${localTask.id}`,
+        {
+          [field]: value,
+        },
+      );
     } catch (error) {
       console.error(`Failed to update ${field}:`, error);
     }

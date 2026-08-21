@@ -108,18 +108,21 @@ export function NewTaskView() {
 
   const handleCreateTask = async () => {
     try {
-      const response = await axios.post("http://localhost:3001/tasks", {
-        title,
-        description,
-        status,
-        priority,
-        project,
-        labels,
-        resources,
-        subtasks,
-        dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
-        reporter: reporter,
-      });
+      const response = await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/tasks`,
+        {
+          title,
+          description,
+          status,
+          priority,
+          project,
+          labels,
+          resources,
+          subtasks,
+          dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
+          reporter: reporter,
+        },
+      );
 
       if (response.status === 201 || response.status === 200) {
         router.push("/dashboard");

@@ -65,7 +65,9 @@ export function KanbanBoard({
 
     const fetchTasks = async () => {
       try {
-        const response = await axios.get("http://localhost:3001/tasks");
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/tasks`,
+        );
         const data = response.data;
 
         if (Array.isArray(data)) {
@@ -113,7 +115,7 @@ export function KanbanBoard({
   const handleDeleteTask = async (e: React.MouseEvent, taskId: string) => {
     e.stopPropagation(); // Prevents the card's onTaskClick from firing!
     try {
-      await axios.delete(`http://localhost:3001/tasks/${taskId}`);
+      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/tasks/${taskId}`);
       // Instantly remove the task from the board without reloading the page
       setTasks((prev) => prev.filter((t) => String(t.id) !== taskId));
     } catch (error) {
@@ -171,12 +173,13 @@ export function KanbanBoard({
       setTasks(newTasks);
 
       axios
-        .patch(`http://localhost:3001/tasks/${draggableId}`, {
-          status: destination.droppableId,
-        })
-        .catch((error) => {
-          console.error("Failed to update task status in DB:", error);
-        });
+        axios
+          .patch(`${process.env.NEXT_PUBLIC_API_URL}/tasks/${draggableId}`, {
+            status: destination.droppableId,
+          })
+          .catch((error) => {
+            console.error("Failed to update task status in DB:", error);
+          });
     }
   };
 

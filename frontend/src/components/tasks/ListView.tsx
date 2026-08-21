@@ -71,7 +71,9 @@ export function ListView({
   useEffect(() => {
     const fetchTasks = async () => {
       try {
-        const response = await axios.get("http://localhost:3001/tasks");
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/tasks`,
+        );
         const data = response.data;
 
         if (Array.isArray(data)) {

@@ -5,13 +5,12 @@ import { ValidationPipe } from '@nestjs/common';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Enable CORS for the Next.js frontend
+  // 1. DYNAMIC CORS: Trust the production URL, fallback to localhost
   app.enableCors({
-    origin: 'http://localhost:3000',
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
     credentials: true,
   });
 
-  // Enable strict validation
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -20,8 +19,10 @@ async function bootstrap() {
     }),
   );
 
-  // Run backend on port 3001
-  await app.listen(3001);
-  console.log(`Backend is running on: http://localhost:3001`);
+  // 2. DYNAMIC PORT: Let the cloud provider assign the port, fallback to 3001
+  const port = process.env.PORT || 3001;
+  await app.listen(port);
+
+  console.log(`Backend is running on port: ${port}`);
 }
 bootstrap().catch((err) => console.error(err));
