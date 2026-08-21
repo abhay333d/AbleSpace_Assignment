@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import axios from "axios";
+import { useRouter } from "next/navigation";
 import { Task, Status } from "@/types/task";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -12,10 +14,10 @@ import {
   SignalLow,
 } from "lucide-react";
 
-// The interface telling TypeScript what props to expect
 interface ListViewProps {
   onTaskClick: (task: Task) => void;
   filterPriority: string;
+  searchQuery?: string;
   visibleFields: {
     priority: boolean;
     members: boolean;
@@ -25,7 +27,6 @@ interface ListViewProps {
     reporter: boolean;
   };
 }
-
 
 const statuses: Status[] = ["To Do", "Doing", "Completed", "On Hold"];
 
@@ -55,30 +56,41 @@ const PriorityIcon = ({ priority }: { priority: Task["priority"] }) => {
   }
 };
 
-// Pass the props into the component signature here
 export function ListView({
   visibleFields,
   onTaskClick,
   filterPriority,
+  searchQuery = "",
 }: ListViewProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [collapsedSections, setCollapsedSections] = useState<
+    Record<string, boolean>
+  >({});
+  const router = useRouter();
 
   useEffect(() => {
     const fetchTasks = async () => {
       try {
-        const response = await fetch("http://localhost:3001/tasks");
-        const data = await response.json();
-        setTasks(data);
+        const response = await axios.get("http://localhost:3001/tasks");
+        const data = response.data;
+
+        if (Array.isArray(data)) {
+          const formattedTasks = data.map((t: any) => ({
+            ...t,
+            id: String(t._id || t.id || Math.random()),
+          }));
+          setTasks(formattedTasks);
+        } else {
+          setTasks([]);
+        }
       } catch (error) {
         console.error("Failed to fetch tasks:", error);
+        setTasks([]);
       }
     };
 
     fetchTasks();
   }, []);
-  const [collapsedSections, setCollapsedSections] = useState<
-    Record<string, boolean>
-  >({});
 
   const toggleSection = (status: string) => {
     setCollapsedSections((prev) => ({ ...prev, [status]: !prev[status] }));
@@ -91,6 +103,11 @@ export function ListView({
           .filter((t) => t.status === status)
           .filter(
             (t) => filterPriority === "All" || t.priority === filterPriority,
+          )
+          .filter(
+            (t) =>
+              !searchQuery ||
+              t.title.toLowerCase().includes(searchQuery.toLowerCase()),
           );
         const isCollapsed = collapsedSections[status];
 
@@ -98,7 +115,6 @@ export function ListView({
 
         return (
           <div key={status} className="flex flex-col">
-            {/* Group Header */}
             <div
               className="flex items-center gap-2 mb-3 cursor-pointer select-none text-foreground hover:text-gray-600 dark:hover:text-gray-300"
               onClick={() => toggleSection(status)}
@@ -114,7 +130,6 @@ export function ListView({
               </span>
             </div>
 
-            {/* Data Table */}
             {!isCollapsed && (
               <div className="w-full rounded-lg border border-border bg-white dark:bg-background overflow-hidden shadow-sm">
                 <table className="w-full text-left text-sm">
@@ -143,71 +158,89 @@ export function ListView({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {sectionTasks.map((task) => (
-                      <tr
-                        key={task.id}
-                        onClick={() => onTaskClick(task)}
-                        className="hover:bg-gray-50/30 dark:hover:bg-gray-800/20 transition-colors group cursor-pointer"
-                      >
-                        <td className="px-4 py-3 text-foreground font-medium">
-                          {task.title}
-                        </td>
-                        {visibleFields.priority && (
-                          <td className="px-4 py-3">
-                            <PriorityIcon priority={task.priority} />
+                    {sectionTasks.map((task) => {
+                      // Safety checks applied here to prevent crashes
+                      const safeAvatar =
+                        task.assignee?.avatar ||
+                        "https://github.com/shadcn.png";
+                      const safeInitials =
+                        task.assignee?.initials ||
+                        task.reporter?.charAt(0) ||
+                        "U";
+
+                      return (
+                        <tr
+                          key={task.id}
+                          onClick={() => onTaskClick(task)}
+                          className="hover:bg-gray-50/30 dark:hover:bg-gray-800/20 transition-colors group cursor-pointer"
+                        >
+                          <td className="px-4 py-3 text-foreground font-medium">
+                            {task.title}
                           </td>
-                        )}
-                        {visibleFields.members && (
-                          <td className="px-4 py-3">
-                            <Avatar className="h-6 w-6 border border-border">
-                              <AvatarImage src={task.assignee.avatar} />
-                              <AvatarFallback className="text-[10px] bg-gray-100 text-gray-600">
-                                {task.assignee.initials}
-                              </AvatarFallback>
-                            </Avatar>
-                          </td>
-                        )}
-                        {visibleFields.dueDate && (
-                          <td className="px-4 py-3 text-gray-500">
-                            {task.dueDate}
-                          </td>
-                        )}
-                        {visibleFields.labels && (
-                          <td className="px-4 py-3">
-                            {task.labels.length > 0 ? (
-                              <span className="inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                                {task.labels[0]}{" "}
-                                {task.labels.length > 1 &&
-                                  `+${task.labels.length - 1}`}
+                          {visibleFields.priority && (
+                            <td className="px-4 py-3">
+                              <PriorityIcon priority={task.priority} />
+                            </td>
+                          )}
+                          {visibleFields.members && (
+                            <td className="px-4 py-3">
+                              <Avatar className="h-6 w-6 border border-border">
+                                <AvatarImage src={safeAvatar} />
+                                <AvatarFallback className="text-[10px] bg-gray-100 text-gray-600">
+                                  {safeInitials}
+                                </AvatarFallback>
+                              </Avatar>
+                            </td>
+                          )}
+                          {visibleFields.dueDate && (
+                            <td className="px-4 py-3 text-gray-500">
+                              {task.dueDate
+                                ? new Date(task.dueDate).toLocaleDateString(
+                                    "en-GB",
+                                    { day: "numeric", month: "short" },
+                                  )
+                                : "-"}
+                            </td>
+                          )}
+                          {visibleFields.labels && (
+                            <td className="px-4 py-3">
+                              {task.labels?.length > 0 ? (
+                                <span className="inline-flex items-center gap-1 rounded bg-gray-100 px-2 py-0.5 text-[11px] text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                                  {task.labels[0]}{" "}
+                                  {task.labels.length > 1 &&
+                                    `+${task.labels.length - 1}`}
+                                </span>
+                              ) : (
+                                <span className="text-gray-300">-</span>
+                              )}
+                            </td>
+                          )}
+                          {visibleFields.status && (
+                            <td className="px-4 py-3">
+                              <span className="inline-flex items-center rounded-full border border-gray-200 px-2 py-0.5 text-[11px] text-gray-600 dark:border-gray-700 dark:text-gray-300">
+                                {task.status}
                               </span>
-                            ) : (
-                              <span className="text-gray-300">-</span>
-                            )}
+                            </td>
+                          )}
+                          {visibleFields.reporter && (
+                            <td className="px-4 py-3 text-gray-400 text-xs">
+                              {task.reporter || "Admin"}
+                            </td>
+                          )}
+                          <td className="px-4 py-3 text-gray-400">
+                            <button className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </button>
                           </td>
-                        )}
-                        {visibleFields.status && (
-                          <td className="px-4 py-3">
-                            <span className="inline-flex items-center rounded-full border border-gray-200 px-2 py-0.5 text-[11px] text-gray-600 dark:border-gray-700 dark:text-gray-300">
-                              {task.status}
-                            </span>
-                          </td>
-                        )}
-                        {visibleFields.reporter && (
-                          <td className="px-4 py-3 text-gray-400 text-xs">
-                            Admin
-                          </td>
-                        )}
-                        <td className="px-4 py-3 text-gray-400">
-                          <button className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {/* Add Task Row */}
+                        </tr>
+                      );
+                    })}
                     <tr>
                       <td
                         colSpan={10}
+                        onClick={() =>
+                          router.push(`/tasks/new?status=${status}`)
+                        }
                         className="px-4 py-3 text-gray-400 hover:text-foreground cursor-pointer transition-colors border-t border-dashed border-border"
                       >
                         + Add Task

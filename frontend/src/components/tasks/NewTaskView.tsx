@@ -16,8 +16,18 @@ import {
   ChevronDown,
   CheckCircle2,
   Circle,
+  Check, // <-- Added Check icon
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import axios from "axios";
+
+// <-- ADDED: Dropdown imports for the right panel
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function NewTaskView() {
   const router = useRouter();
@@ -35,10 +45,20 @@ export function NewTaskView() {
   // Form State
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [status] = useState("To Do");
-  const [priority] = useState("Medium");
-  const [project] = useState("TODO TASK MANAGEMENT");
-  const [dueDate] = useState("13 Aug 2026");
+
+  // FIXED: Added updater functions for the right panel dropdowns
+  const [status, setStatus] = useState("To Do");
+  const [priority, setPriority] = useState("Medium");
+  const [project, setProject] = useState("TODO TASK MANAGEMENT");
+
+  // Dynamic current date
+  const [dueDate, setDueDate] = useState(() => {
+    return new Date().toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  });
 
   // Array States
   const [labels, setLabels] = useState<string[]>(["t1", "t2"]);
@@ -58,33 +78,51 @@ export function NewTaskView() {
   ]);
   const [newSubtask, setNewSubtask] = useState("");
 
+  // Set a generic default first to prevent hydration errors
+  const [reporter, setReporter] = useState("Guest User");
+
+  // Load User Data
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedUser = localStorage.getItem("ableSpace_user");
+      if (storedUser) {
+        const parsedUser = JSON.parse(storedUser);
+        if (parsedUser.name) {
+          setReporter(parsedUser.name);
+        }
+      }
+    }
+  }, []);
+
+  // Read the URL parameter to set the default Status
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const statusFromUrl = urlParams.get("status");
+
+      if (statusFromUrl) {
+        setStatus(statusFromUrl);
+      }
+    }
+  }, []);
+
   const handleCreateTask = async () => {
     try {
-      const response = await fetch("http://localhost:3001/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          description,
-          status,
-          priority,
-          project,
-          labels,
-          resources,
-          subtasks,
-          // Safely convert the date to an ISO string which the backend expects
-          dueDate: new Date(dueDate).toISOString(),
-          reporter: "Dexter",
-        }),
+      const response = await axios.post("http://localhost:3001/tasks", {
+        title,
+        description,
+        status,
+        priority,
+        project,
+        labels,
+        resources,
+        subtasks,
+        dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
+        reporter: reporter,
       });
 
-      if (response.ok) {
+      if (response.status === 201 || response.status === 200) {
         router.push("/dashboard");
-      } else {
-        // THIS WILL CATCH THE EXACT VALIDATION ERRORS!
-        const errorData = await response.json();
-        console.error("Backend Validation Failed:", errorData);
-        alert(`Validation Error: ${errorData.message.join(", ")}`);
       }
     } catch (error) {
       console.error("Failed to create task:", error);
@@ -132,7 +170,6 @@ export function NewTaskView() {
         </div>
       </div>
 
-      {/* Relative wrapper for absolute mobile sidebar */}
       <div className="relative flex flex-1 overflow-hidden">
         {/* Left Column: Form */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-10">
@@ -165,10 +202,10 @@ export function NewTaskView() {
                 <div className="flex items-center gap-1.5 bg-gray-50 dark:bg-gray-900 border border-border rounded px-2 py-1">
                   <Avatar className="h-4 w-4">
                     <AvatarFallback className="text-[8px] bg-black text-white">
-                      A
+                      {reporter.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-xs font-medium">Admin</span>
+                  <span className="text-xs font-medium">{reporter}</span>
                 </div>
                 <div className="flex items-center gap-1.5 text-red-500 bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-900/30 rounded px-2 py-1">
                   <Calendar className="h-3.5 w-3.5" />
@@ -365,7 +402,7 @@ export function NewTaskView() {
           </div>
         </div>
 
-        {/* Right Column: Details Panel (Absolute on Mobile, Relative on Desktop) */}
+        {/* Right Column: Details Panel */}
         {isRightPanelOpen && (
           <div className="absolute inset-0 z-20 w-full overflow-y-auto bg-white p-5 dark:bg-background lg:relative lg:w-[320px] lg:shrink-0 lg:border-l lg:border-border lg:bg-gray-50/30">
             <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-background mb-4">
@@ -376,35 +413,186 @@ export function NewTaskView() {
               </div>
 
               <div className="flex flex-col gap-4 text-sm">
+                {/* STATUS DROPDOWN */}
                 <div className="grid grid-cols-[80px_1fr] items-center text-gray-500">
                   <span>Status</span>
-                  <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300 font-medium text-xs cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors w-fit p-1 rounded -ml-1">
-                    <span className="h-2 w-2 rounded-full bg-gray-400" />{" "}
-                    {status}
-                  </span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      className={`flex w-fit items-center gap-1.5 font-medium text-xs cursor-pointer outline-none px-1.5 py-0.5 rounded -ml-1.5 transition-colors ${
+                        status === "Completed"
+                          ? "text-green-600 hover:bg-green-50 dark:hover:bg-green-900/10"
+                          : status === "Doing"
+                            ? "text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/10"
+                            : "text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/10"
+                      }`}
+                    >
+                      <span
+                        className={`h-2 w-2 rounded-full ${
+                          status === "Completed"
+                            ? "bg-green-500"
+                            : status === "Doing"
+                              ? "bg-blue-500"
+                              : "bg-amber-500"
+                        }`}
+                      />{" "}
+                      {status} <ChevronDown className="h-3 w-3" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="start"
+                      className="w-48 p-2 rounded-xl shadow-lg border-gray-200 dark:border-gray-800"
+                    >
+                      <div className="px-2 pb-2 text-xs text-gray-400 font-medium">
+                        Status
+                      </div>
+                      <DropdownMenuItem
+                        onClick={() => setStatus("To Do")}
+                        className="text-xs cursor-pointer flex justify-between items-center"
+                      >
+                        To Do{" "}
+                        {status === "To Do" && <Check className="h-3 w-3" />}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setStatus("Doing")}
+                        className="text-xs text-blue-600 cursor-pointer flex justify-between items-center"
+                      >
+                        Doing{" "}
+                        {status === "Doing" && <Check className="h-3 w-3" />}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setStatus("Completed")}
+                        className="text-xs text-green-600 cursor-pointer flex justify-between items-center"
+                      >
+                        Completed{" "}
+                        {status === "Completed" && (
+                          <Check className="h-3 w-3" />
+                        )}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setStatus("On Hold")}
+                        className="text-xs text-amber-600 cursor-pointer flex justify-between items-center"
+                      >
+                        On Hold{" "}
+                        {status === "On Hold" && <Check className="h-3 w-3" />}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
+
+                {/* PROJECT DROPDOWN */}
                 <div className="grid grid-cols-[80px_1fr] items-center text-gray-500">
                   <span>Project</span>
-                  <span className="flex items-center gap-1.5 text-pink-600 font-medium text-xs cursor-pointer hover:bg-pink-50 dark:hover:bg-pink-900/10 transition-colors w-fit p-1 rounded -ml-1">
-                    <span className="h-2 w-2 rounded-full bg-pink-500" />{" "}
-                    {project}
-                  </span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="flex w-fit items-center gap-1.5 text-pink-600 font-medium text-xs cursor-pointer hover:bg-pink-50 dark:hover:bg-pink-900/10 transition-colors px-1.5 py-0.5 rounded -ml-1.5 outline-none">
+                      <span className="h-2 w-2 rounded-full bg-pink-500" />{" "}
+                      {project} <ChevronDown className="h-3 w-3" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="start"
+                      className="w-56 p-2 rounded-xl shadow-lg border-gray-200 dark:border-gray-800"
+                    >
+                      <div className="px-2 pb-2 text-xs text-gray-400 font-medium">
+                        Project
+                      </div>
+                      <DropdownMenuItem
+                        onClick={() => setProject("TODO TASK MANAGEMENT")}
+                        className="text-xs cursor-pointer flex justify-between items-center"
+                      >
+                        TODO TASK MANAGEMENT{" "}
+                        {project === "TODO TASK MANAGEMENT" && (
+                          <Check className="h-3 w-3" />
+                        )}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setProject("MARKETING CAMPAIGN")}
+                        className="text-xs cursor-pointer flex justify-between items-center"
+                      >
+                        MARKETING CAMPAIGN{" "}
+                        {project === "MARKETING CAMPAIGN" && (
+                          <Check className="h-3 w-3" />
+                        )}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setProject("WEBSITE REDESIGN")}
+                        className="text-xs cursor-pointer flex justify-between items-center"
+                      >
+                        WEBSITE REDESIGN{" "}
+                        {project === "WEBSITE REDESIGN" && (
+                          <Check className="h-3 w-3" />
+                        )}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
+
+                {/* PRIORITY DROPDOWN */}
                 <div className="grid grid-cols-[80px_1fr] items-center text-gray-500">
                   <span>Priority</span>
-                  <span className="flex items-center gap-1.5 text-amber-500 font-medium text-xs cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-900/10 transition-colors w-fit p-1 rounded -ml-1">
-                    <span className="h-3 w-3" /> {priority}
-                  </span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      className={`flex w-fit items-center gap-1.5 font-medium text-xs cursor-pointer outline-none px-1.5 py-0.5 rounded -ml-1.5 transition-colors ${
+                        priority === "Urgent" || priority === "High"
+                          ? "text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10"
+                          : priority === "Medium"
+                            ? "text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/10"
+                            : "text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+                      }`}
+                    >
+                      {priority} <ChevronDown className="h-3 w-3" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent
+                      align="start"
+                      className="w-48 p-2 rounded-xl shadow-lg border-gray-200 dark:border-gray-800"
+                    >
+                      <div className="px-2 pb-2 text-xs text-gray-400 font-medium">
+                        Priority
+                      </div>
+                      <DropdownMenuItem
+                        onClick={() => setPriority("None")}
+                        className="text-xs text-gray-600 cursor-pointer"
+                      >
+                        No Priority
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setPriority("Urgent")}
+                        className="text-xs text-red-500 font-medium cursor-pointer flex justify-between items-center bg-red-50 dark:bg-red-900/10"
+                      >
+                        Urgent{" "}
+                        {priority === "Urgent" && <Check className="h-3 w-3" />}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setPriority("High")}
+                        className="text-xs text-orange-500 cursor-pointer flex justify-between items-center"
+                      >
+                        High{" "}
+                        {priority === "High" && <Check className="h-3 w-3" />}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setPriority("Medium")}
+                        className="text-xs text-amber-500 cursor-pointer flex justify-between items-center"
+                      >
+                        Medium{" "}
+                        {priority === "Medium" && <Check className="h-3 w-3" />}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => setPriority("Low")}
+                        className="text-xs text-gray-400 cursor-pointer flex justify-between items-center"
+                      >
+                        Low{" "}
+                        {priority === "Low" && <Check className="h-3 w-3" />}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
+
                 <div className="grid grid-cols-[80px_1fr] items-center text-gray-500">
                   <span>Members</span>
                   <div className="flex items-center gap-1.5 text-foreground font-medium text-xs cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors w-fit p-1 rounded -ml-1">
                     <Avatar className="h-5 w-5">
                       <AvatarFallback className="text-[9px] bg-black text-white">
-                        A
+                        {reporter.charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>{" "}
-                    Admin
+                    {reporter}
                   </div>
                 </div>
                 <div className="grid grid-cols-[80px_1fr] items-center text-gray-500">
@@ -416,7 +604,7 @@ export function NewTaskView() {
                 <div className="grid grid-cols-[80px_1fr] items-center text-gray-500">
                   <span>Reporter</span>
                   <span className="text-foreground text-xs font-medium">
-                    Uzair Qureshi
+                    {reporter}
                   </span>
                 </div>
               </div>

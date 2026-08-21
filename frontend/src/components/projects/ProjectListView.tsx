@@ -17,6 +17,7 @@ interface ProjectListViewProps {
     dueDate: boolean;
   };
   filterPriority: string; // <-- Added Prop
+  searchQuery?: string;
 }
 
 type Project = {
@@ -84,13 +85,19 @@ const PriorityIcon = ({ priority }: { priority: Project["priority"] }) => {
 export function ProjectListView({
   visibleFields,
   filterPriority,
+  searchQuery = "",
 }: ProjectListViewProps) {
   const [projects] = useState<Project[]>(initialProjects);
 
   // <-- Apply Filter Logic Here
   const filteredProjects = projects.filter((project) => {
-    if (filterPriority === "All") return true;
-    return project.priority === filterPriority;
+    const matchesPriority =
+      filterPriority === "All" || project.priority === filterPriority;
+    const matchesSearch =
+      !searchQuery ||
+      project.title.toLowerCase().includes(searchQuery.toLowerCase());
+
+    return matchesPriority && matchesSearch;
   });
 
   return (

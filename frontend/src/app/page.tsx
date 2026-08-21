@@ -12,13 +12,26 @@ export default function Home() {
   // If already authenticated, push them to the tasks dashboard
   useEffect(() => {
     if (isAuthenticated) {
-      router.push("/dashboard"); // <-- Update this
+      router.push("/dashboard");
     }
   }, [isAuthenticated, router]);
 
   const handleGuestLogin = () => {
+    // 1. Update your global Zustand state
     loginAsGuest();
-    router.push("/dashboard"); // <-- And this
+
+    // 2. Save the session to the browser so the "Create Task" logic can read it!
+    localStorage.setItem(
+      "ableSpace_user",
+      JSON.stringify({
+        name: "Guest User",
+        role: "guest",
+        avatar: "https://github.com/shadcn.png",
+      }),
+    );
+
+    // 3. Redirect to the dashboard
+    router.push("/dashboard");
   };
 
   return (

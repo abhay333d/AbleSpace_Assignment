@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useAppStore, type ColorMode } from "@/store/useAppStore";
+import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   Search,
@@ -24,6 +25,59 @@ export default function SettingsPage() {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
   const { colorMode, setColorMode } = useAppStore();
+
+  const [userName, setUserName] = useState("");
+  const [userInitials, setUserInitials] = useState("");
+  const [userEmail, setUserEmail] = useState("");
+  const [userUsername, setUserUsername] = useState("");
+  const [userTitle, setUserTitle] = useState("Guest Evaluator");
+  const [userAvatar, setUserAvatar] = useState("https://github.com/shadcn.png");
+
+  // NEW: State to manage the button text feedback
+  const [isSaved, setIsSaved] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedUser = localStorage.getItem("ableSpace_user");
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        if (parsed.name) {
+          setUserName(parsed.name);
+          setUserInitials(parsed.name.substring(0, 2).toUpperCase());
+          setUserEmail(
+            parsed.email ||
+              `${parsed.name.replace(/\s+/g, "").toLowerCase()}@ablespace.com`,
+          );
+          setUserUsername(
+            parsed.username || parsed.name.replace(/\s+/g, "").toLowerCase(),
+          );
+          if (parsed.title) setUserTitle(parsed.title);
+        }
+        if (parsed.avatar) setUserAvatar(parsed.avatar);
+      }
+    }
+  }, []);
+
+  // NEW: Function to save changes back to localStorage
+  const handleSaveProfile = () => {
+    if (typeof window !== "undefined") {
+      const storedUser = localStorage.getItem("ableSpace_user");
+      const parsed = storedUser ? JSON.parse(storedUser) : {};
+
+      // Update the object with new values from state
+      parsed.name = userName;
+      parsed.email = userEmail;
+      parsed.username = userUsername;
+      parsed.title = userTitle;
+
+      // Save back to local storage
+      localStorage.setItem("ableSpace_user", JSON.stringify(parsed));
+
+      // Show success feedback
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 2000); // Revert button text after 2 seconds
+    }
+  };
 
   const colors: { name: string; value: ColorMode; hex: string }[] = [
     { name: "Amber", value: "amber", hex: "bg-[#f59e0b]" },
@@ -194,8 +248,8 @@ export default function SettingsPage() {
                   Profile picture
                 </span>
                 <Avatar className="h-9 w-9 ring-1 ring-border">
-                  <AvatarImage src="https://github.com/shadcn.png" />
-                  <AvatarFallback>DX</AvatarFallback>
+                  <AvatarImage src={userAvatar} />
+                  <AvatarFallback>{userInitials}</AvatarFallback>
                 </Avatar>
               </div>
 
@@ -204,9 +258,13 @@ export default function SettingsPage() {
                 <span className="text-sm font-medium text-foreground min-w-[120px]">
                   Email
                 </span>
-                <div className="w-full sm:w-2/3 max-w-[320px] flex items-center justify-between gap-3 text-sm font-medium text-foreground">
-                  dexter@gmail.com
-                  <Pencil className="h-3.5 w-3.5 text-gray-400 cursor-pointer hover:text-foreground shrink-0" />
+                <div className="w-full sm:w-2/3 max-w-[320px] flex items-center justify-between gap-3">
+                  <input
+                    type="email"
+                    value={userEmail}
+                    onChange={(e) => setUserEmail(e.target.value)}
+                    className="w-full rounded-md border-none bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm font-medium text-foreground outline-none focus:ring-1 focus:ring-primary transition-all"
+                  />
                 </div>
               </div>
 
@@ -217,7 +275,8 @@ export default function SettingsPage() {
                 </span>
                 <input
                   type="text"
-                  defaultValue="Dexter"
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
                   className="w-full sm:w-2/3 max-w-[320px] rounded-md border-none bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm font-medium text-foreground outline-none focus:ring-1 focus:ring-primary transition-all"
                 />
               </div>
@@ -234,13 +293,14 @@ export default function SettingsPage() {
                 </div>
                 <input
                   type="text"
-                  defaultValue="Designer"
+                  value={userTitle}
+                  onChange={(e) => setUserTitle(e.target.value)}
                   className="w-full sm:w-2/3 max-w-[320px] rounded-md border-none bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm font-medium text-foreground outline-none focus:ring-1 focus:ring-primary transition-all"
                 />
               </div>
 
               {/* Username */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 sm:p-6 gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 sm:p-6 border-b border-gray-100 dark:border-gray-800 gap-3">
                 <div className="flex flex-col gap-1 min-w-[120px]">
                   <span className="text-sm font-medium text-foreground">
                     Username
@@ -251,9 +311,27 @@ export default function SettingsPage() {
                 </div>
                 <input
                   type="text"
-                  defaultValue="Dexuser"
+                  value={userUsername}
+                  onChange={(e) => setUserUsername(e.target.value)}
                   className="w-full sm:w-2/3 max-w-[320px] rounded-md border-none bg-gray-50 dark:bg-gray-900 px-3 py-2 text-sm font-medium text-foreground outline-none focus:ring-1 focus:ring-primary transition-all"
                 />
+              </div>
+
+              {/* NEW: Save Button Footer */}
+              <div className="flex items-center justify-end p-5 sm:p-6 bg-gray-50/50 dark:bg-gray-900/50 rounded-b-xl">
+                <button
+                  onClick={handleSaveProfile}
+                  className="flex items-center justify-center gap-2 rounded-md bg-black px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 min-w-[140px]"
+                >
+                  {isSaved ? (
+                    <>
+                      <Check className="h-4 w-4" />
+                      Saved!
+                    </>
+                  ) : (
+                    "Save Changes"
+                  )}
+                </button>
               </div>
             </div>
           </div>

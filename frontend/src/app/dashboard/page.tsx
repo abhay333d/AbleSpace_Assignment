@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+// 1. ADDED: Import the AppStore to get the currentView
+import { useAppStore } from "@/store/useAppStore";
 import {
   Search,
   Columns3,
@@ -38,17 +40,18 @@ import { Task } from "@/types/task";
 
 type ViewMode = "board" | "list";
 
-// Extracted Content Component to handle URL Params inside Suspense
-function DashboardContent() {
-  const searchParams = useSearchParams();
+export default function DashboardPage() {
   const router = useRouter();
-  const tab = searchParams.get("tab") || "tasks";
+
+  // 2. CHANGED: Use Zustand instead of URL search params!
+  const { currentView } = useAppStore();
 
   const [viewMode, setViewMode] = useState<ViewMode>("board");
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [filterPriority, setFilterPriority] = useState("All");
 
-  // We maintain separate states so toggling fields in one tab doesn't break the other
+  const [searchQuery, setSearchQuery] = useState("");
+
   const [taskFields, setTaskFields] = useState({
     priority: true,
     members: true,
@@ -65,10 +68,10 @@ function DashboardContent() {
   });
 
   // Dynamically select which field list is currently active
-  const activeFields = tab === "projects" ? projectFields : taskFields;
+  const activeFields = currentView === "projects" ? projectFields : taskFields;
 
   const toggleField = (field: string) => {
-    if (tab === "projects") {
+    if (currentView === "projects") {
       setProjectFields((prev) => ({
         ...prev,
         [field as keyof typeof projectFields]:
@@ -83,7 +86,7 @@ function DashboardContent() {
     }
   };
 
-  if (selectedTask && tab === "tasks") {
+  if (selectedTask && currentView === "tasks") {
     return (
       <TaskDetailView
         task={selectedTask}
@@ -93,11 +96,11 @@ function DashboardContent() {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full flex-col w-full">
       {/* Dynamic Top Toolbar */}
       <div className="flex items-center justify-between border-b border-border bg-background px-4 py-3 lg:px-6 shrink-0">
         <h1 className="text-lg font-semibold text-foreground capitalize">
-          {tab}
+          {currentView}
         </h1>
 
         <div className="flex items-center gap-2 sm:gap-3">
@@ -106,6 +109,8 @@ function DashboardContent() {
             <input
               type="text"
               placeholder="Search..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="h-9 w-48 rounded-md border border-border bg-transparent pl-9 pr-4 text-sm text-foreground placeholder:text-gray-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary md:w-64"
             />
             <div className="absolute right-2.5 flex items-center justify-center rounded border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 dark:border-gray-700 dark:bg-gray-800">
@@ -124,7 +129,7 @@ function DashboardContent() {
               align="end"
               className="w-56 p-2 rounded-xl shadow-lg border-gray-200 dark:border-gray-800"
             >
-              {tab === "tasks" && (
+              {currentView === "tasks" && (
                 <div className="mb-2 flex rounded-md bg-gray-100/80 p-1 dark:bg-gray-800/80">
                   <button
                     onClick={() => setViewMode("list")}
@@ -317,12 +322,11 @@ function DashboardContent() {
             </DropdownMenuContent>
           </DropdownMenu>
 
-          {/* ADDED ONCLICK HANDLER FOR ROUTING */}
+          {/* Add Button */}
           <button
             onClick={() => {
-              if (tab === "projects") {
-                // If you add a route for /projects/new later, uncomment this:
-                // router.push("/projects/new");
+              if (currentView === "projects") {
+                // Future expansion for projects
               } else {
                 router.push("/tasks/new");
               }
@@ -331,48 +335,38 @@ function DashboardContent() {
           >
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline-block">
-              {tab === "projects" ? "Add Project" : "Add Task"}
+              {currentView === "projects" ? "Add Project" : "Add Task"}
             </span>
           </button>
         </div>
       </div>
 
+      {/* Main Table/Board Area */}
       <div className="flex flex-1 flex-col overflow-hidden bg-white dark:bg-background">
         <div className="flex-1 overflow-auto p-4 lg:p-6">
-          {tab === "projects" ? (
+          {currentView === "projects" ? (
             <ProjectListView
               visibleFields={projectFields}
               filterPriority={filterPriority}
+              searchQuery={searchQuery}
             />
           ) : viewMode === "board" ? (
             <KanbanBoard
               visibleFields={taskFields}
               onTaskClick={setSelectedTask}
               filterPriority={filterPriority}
+              searchQuery={searchQuery}
             />
           ) : (
             <ListView
               visibleFields={taskFields}
               onTaskClick={setSelectedTask}
               filterPriority={filterPriority}
+              searchQuery={searchQuery}
             />
           )}
         </div>
       </div>
     </div>
-  );
-}
-
-export default function DashboardPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex h-full items-center justify-center text-gray-500">
-          Loading Dashboard...
-        </div>
-      }
-    >
-      <DashboardContent />
-    </Suspense>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import axios from "axios";
 import {
   DragDropContext,
   Droppable,
@@ -16,10 +17,20 @@ import {
   GripVertical,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useRouter } from "next/navigation";
+
+// NEW: Import the Dropdown components
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface KanbanBoardProps {
   onTaskClick: (task: Task) => void;
   filterPriority: string;
+  searchQuery?: string; // Tracks the search bar input
   visibleFields: {
     priority: boolean;
     members: boolean;
@@ -41,22 +52,23 @@ export function KanbanBoard({
   visibleFields,
   onTaskClick,
   filterPriority,
+  searchQuery = "",
 }: KanbanBoardProps) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [orderedColumns, setOrderedColumns] = useState(initialColumns);
   const [isMounted, setIsMounted] = useState(false);
   const boardRef = useRef<HTMLDivElement | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     setTimeout(() => setIsMounted(true), 0);
 
     const fetchTasks = async () => {
       try {
-        const response = await fetch("http://localhost:3001/tasks");
-        const data = await response.json();
+        const response = await axios.get("http://localhost:3001/tasks");
+        const data = response.data;
 
         if (Array.isArray(data)) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           const formattedTasks = data.map((t: any) => ({
             ...t,
             id: String(t._id || t.id || Math.random()),
@@ -66,7 +78,7 @@ export function KanbanBoard({
           setTasks([]);
         }
       } catch (error) {
-        console.error("Failed to fetch tasks:", error);
+        console.error("Failed to fetch tasks via Axios:", error);
         setTasks([]);
       }
     };
@@ -83,22 +95,31 @@ export function KanbanBoard({
       const target = e.target as HTMLElement;
       const column = target.closest(".task-list-container");
 
-      // If hovering over a column that needs vertical scrolling, let it scroll vertically
       if (column && column.scrollHeight > column.clientHeight) {
         return;
       }
 
-      // Convert vertical scroll to horizontal board scroll
       if (e.deltaY !== 0) {
         e.preventDefault();
         board.scrollLeft += e.deltaY;
       }
     };
 
-    // Attach non-passive listener
     board.addEventListener("wheel", handleWheel, { passive: false });
     return () => board.removeEventListener("wheel", handleWheel);
   }, [isMounted]);
+
+  // NEW: Delete Task Function directly from the card
+  const handleDeleteTask = async (e: React.MouseEvent, taskId: string) => {
+    e.stopPropagation(); // Prevents the card's onTaskClick from firing!
+    try {
+      await axios.delete(`http://localhost:3001/tasks/${taskId}`);
+      // Instantly remove the task from the board without reloading the page
+      setTasks((prev) => prev.filter((t) => String(t.id) !== taskId));
+    } catch (error) {
+      console.error("Failed to delete task:", error);
+    }
+  };
 
   const onDragEnd = (result: DropResult) => {
     const { source, destination, draggableId, type } = result;
@@ -148,6 +169,14 @@ export function KanbanBoard({
         newTasks.splice(insertIndex + 1, 0, movedTask);
       }
       setTasks(newTasks);
+
+      axios
+        .patch(`http://localhost:3001/tasks/${draggableId}`, {
+          status: destination.droppableId,
+        })
+        .catch((error) => {
+          console.error("Failed to update task status in DB:", error);
+        });
     }
   };
 
@@ -160,17 +189,23 @@ export function KanbanBoard({
           <div
             ref={(el) => {
               provided.innerRef(el);
-              boardRef.current = el; // Store reference for our scroll hijack
+              boardRef.current = el;
             }}
             {...provided.droppableProps}
             className="flex h-full w-full items-start gap-6 overflow-x-auto overflow-y-hidden pb-6 pt-2 px-1 select-none [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           >
             {orderedColumns.map((col, index) => {
+              // Filtering logic applied here
               const columnTasks = (tasks || [])
                 .filter((t) => t.status === col.id)
                 .filter(
                   (t) =>
                     filterPriority === "All" || t.priority === filterPriority,
+                )
+                .filter(
+                  (t) =>
+                    !searchQuery ||
+                    t.title.toLowerCase().includes(searchQuery.toLowerCase()),
                 );
 
               return (
@@ -199,8 +234,14 @@ export function KanbanBoard({
                           </span>
                         </div>
                         <div className="flex items-center gap-1 text-gray-400">
-                          <button className="rounded p-1 hover:bg-gray-200 hover:text-foreground dark:hover:bg-gray-800">
+                          <button
+                            onClick={() =>
+                              router.push(`/tasks/new?status=${col.id}`)
+                            }
+                            className="mt-1 flex items-center gap-2 rounded-lg p-2 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-200/50 hover:text-foreground dark:hover:bg-gray-800"
+                          >
                             <Plus className="h-4 w-4" />
+                            <span>Add Task</span>
                           </button>
                           <button className="rounded p-1 hover:bg-gray-200 hover:text-foreground dark:hover:bg-gray-800">
                             <MoreHorizontal className="h-4 w-4" />
@@ -241,9 +282,32 @@ export function KanbanBoard({
                                       <span className="text-sm font-medium text-foreground leading-snug">
                                         {task.title}
                                       </span>
-                                      <button className="text-gray-400 opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground">
-                                        <MoreHorizontal className="h-4 w-4" />
-                                      </button>
+
+                                      {/* UPDATED: Dynamic Dropdown Menu for Deletion */}
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger
+                                          onClick={(e) => e.stopPropagation()} // Vital! Keeps the task detail panel from opening
+                                          className="text-gray-400 opacity-0 transition-opacity group-hover:opacity-100 hover:text-foreground outline-none"
+                                        >
+                                          <MoreHorizontal className="h-4 w-4" />
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent
+                                          align="end"
+                                          className="w-32 rounded-xl shadow-lg border-gray-200 dark:border-gray-800"
+                                        >
+                                          <DropdownMenuItem
+                                            onClick={(e) =>
+                                              handleDeleteTask(
+                                                e,
+                                                String(task.id),
+                                              )
+                                            }
+                                            className="text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 cursor-pointer font-medium text-[13px]"
+                                          >
+                                            Delete Task
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
                                     </div>
 
                                     {(visibleFields.members ||
@@ -260,11 +324,13 @@ export function KanbanBoard({
                                               />
                                               <AvatarFallback className="text-[10px]">
                                                 {task.assignee?.initials ||
+                                                  task.reporter?.charAt(0) ||
                                                   "U"}
                                               </AvatarFallback>
                                             </Avatar>
                                             <span className="font-medium text-gray-700 dark:text-gray-300">
                                               {task.assignee?.name ||
+                                                task.reporter ||
                                                 "Unassigned"}
                                             </span>
                                           </div>
@@ -309,7 +375,13 @@ export function KanbanBoard({
                             ))}
                             {provided.placeholder}
 
-                            <button className="mt-1 flex items-center gap-2 rounded-lg p-2 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-200/50 hover:text-foreground dark:hover:bg-gray-800">
+                            {/* UPDATED: Dynamic Bottom Add Task routing logic */}
+                            <button
+                              onClick={() =>
+                                router.push(`/tasks/new?status=${col.id}`)
+                              }
+                              className="mt-1 flex items-center gap-2 rounded-lg p-2 text-xs font-medium text-gray-500 transition-colors hover:bg-gray-200/50 hover:text-foreground dark:hover:bg-gray-800"
+                            >
                               <Plus className="h-4 w-4" />
                               <span>Add Task</span>
                             </button>

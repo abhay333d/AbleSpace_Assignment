@@ -13,4 +13,7 @@ export interface Task {
   };
   dueDate: string;
   labels: string[];
+  reporter?: string;
+  description?: string;
+  project?: string;
 }

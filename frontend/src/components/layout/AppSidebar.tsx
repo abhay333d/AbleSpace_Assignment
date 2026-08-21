@@ -1,8 +1,9 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { usePathname, useRouter } from "next/navigation"; // <-- Routing hooks
+import { usePathname, useRouter } from "next/navigation";
 import { useAppStore, type ColorMode } from "@/store/useAppStore";
+import { useEffect, useState } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -34,11 +35,35 @@ import {
 
 export function AppSidebar() {
   const { theme, setTheme } = useTheme();
-  const { colorMode, setColorMode } = useAppStore();
 
-  // Initialize router and pathname
+  // ADDED: currentView and setCurrentView from the store!
+  const { colorMode, setColorMode, currentView, setCurrentView } =
+    useAppStore();
+
   const pathname = usePathname();
   const router = useRouter();
+
+  // --- DYNAMIC USER STATE ---
+  const [userName, setUserName] = useState("Guest");
+  const [userInitials, setUserInitials] = useState("GU");
+  const [userAvatar, setUserAvatar] = useState("https://github.com/shadcn.png");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedUser = localStorage.getItem("ableSpace_user");
+      if (storedUser) {
+        const parsed = JSON.parse(storedUser);
+        if (parsed.name) {
+          setUserName(parsed.name);
+          setUserInitials(parsed.name.substring(0, 2).toUpperCase());
+        }
+        if (parsed.avatar) {
+          setUserAvatar(parsed.avatar);
+        }
+      }
+    }
+  }, []);
+  // --------------------------
 
   const colors: { name: string; value: ColorMode; hex: string }[] = [
     { name: "Amber", value: "amber", hex: "bg-[#f59e0b]" },
@@ -51,7 +76,6 @@ export function AppSidebar() {
 
   return (
     <Sidebar className="border-r border-border bg-sidebar">
-      {/* Top: User Profile Profile */}
       <SidebarHeader className="p-4">
         <SidebarMenu>
           <SidebarMenuItem>
@@ -61,14 +85,15 @@ export function AppSidebar() {
             >
               <div className="flex items-center gap-3">
                 <Avatar className="h-8 w-8 rounded-lg border border-border">
-                  <AvatarImage
-                    src="https://github.com/shadcn.png"
-                    alt="Dexter"
-                  />
-                  <AvatarFallback className="rounded-lg">DX</AvatarFallback>
+                  <AvatarImage src={userAvatar} alt={userName} />
+                  <AvatarFallback className="rounded-lg">
+                    {userInitials}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col gap-0.5 leading-none">
-                  <span className="font-semibold text-foreground">Dexter</span>
+                  <span className="font-semibold text-foreground">
+                    {userName}
+                  </span>
                 </div>
               </div>
               <ChevronsUpDown className="h-4 w-4 text-gray-500" />
@@ -77,7 +102,6 @@ export function AppSidebar() {
         </SidebarMenu>
       </SidebarHeader>
 
-      {/* Middle: Workspace Navigation */}
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs font-medium text-gray-500">
@@ -85,24 +109,30 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {/* Tasks Link */}
+              {/* UPDATED: Tasks Button uses currentView state */}
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  isActive={pathname === "/dashboard" || pathname === "/"}
-                  onClick={() => router.push("/dashboard")}
-                  className={`gap-3 cursor-pointer ${pathname === "/dashboard" || pathname === "/" ? "" : "text-gray-500 hover:text-foreground"}`}
+                  isActive={currentView === "tasks"}
+                  onClick={() => {
+                    setCurrentView("tasks");
+                    router.push("/dashboard");
+                  }}
+                  className={`gap-3 cursor-pointer ${currentView === "tasks" ? "" : "text-gray-500 hover:text-foreground"}`}
                 >
                   <LayoutGrid className="h-4 w-4" />
                   <span>Tasks</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              {/* Projects Link */}
+              {/* UPDATED: Projects Button uses currentView state */}
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  isActive={pathname.startsWith("/projects")}
-                  onClick={() => router.push("/projects")}
-                  className={`gap-3 cursor-pointer ${pathname.startsWith("/projects") ? "" : "text-gray-500 hover:text-foreground"}`}
+                  isActive={currentView === "projects"}
+                  onClick={() => {
+                    setCurrentView("projects");
+                    router.push("/dashboard");
+                  }}
+                  className={`gap-3 cursor-pointer ${currentView === "projects" ? "" : "text-gray-500 hover:text-foreground"}`}
                 >
                   <FolderKanban className="h-4 w-4" />
                   <span>Projects</span>
@@ -113,10 +143,8 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      {/* Bottom: Settings & Themes */}
       <SidebarFooter className="p-4">
         <SidebarMenu>
-          {/* Change Theme Dropdown */}
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger
@@ -144,7 +172,6 @@ export function AppSidebar() {
             </DropdownMenu>
           </SidebarMenuItem>
 
-          {/* Color Mode Dropdown */}
           <SidebarMenuItem>
             <DropdownMenu>
               <DropdownMenuTrigger
@@ -175,7 +202,6 @@ export function AppSidebar() {
             </DropdownMenu>
           </SidebarMenuItem>
 
-          {/* ADDED: Link to Settings Page */}
           <SidebarMenuItem>
             <SidebarMenuButton
               onClick={() => router.push("/settings")}
