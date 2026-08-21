@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { Task, TaskDocument } from './schemas/task.schema';
@@ -9,8 +9,13 @@ export class TasksService {
   constructor(@InjectModel(Task.name) private taskModel: Model<TaskDocument>) {}
 
   async create(createTaskDto: CreateTaskDto): Promise<Task> {
-    const createdTask = new this.taskModel(createTaskDto);
-    return createdTask.save();
+    try {
+      const createdTask = new this.taskModel(createTaskDto);
+      return await createdTask.save();
+    } catch (error) {
+      console.error('Error creating task:', error);
+      throw new BadRequestException(error.message || 'Failed to create task');
+    }
   }
 
   async findAll(): Promise<Task[]> {
