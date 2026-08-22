@@ -1,0 +1,8 @@
+{
+  "name": "ablespace-assignment",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ]
+}
