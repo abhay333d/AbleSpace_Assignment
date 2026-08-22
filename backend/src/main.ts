@@ -1,30 +1,50 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import { ExpressAdapter } from '@nestjs/platform-express';
+import express from "express";
+
+// 1. Initialize the Express engine for Vercel
+const server = express();
+let cachedApp: any;
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  if (!cachedApp) {
+    const app = await NestFactory.create(AppModule, new ExpressAdapter(server));
 
-  app.setGlobalPrefix('api');
+    app.setGlobalPrefix('api');
 
-  // 1. DYNAMIC CORS: Trust the production URL, fallback to localhost
-  app.enableCors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
-    credentials: true,
-  });
+    app.enableCors({
+      origin: process.env.FRONTEND_URL || '*',
+      credentials: true,
+    });
 
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
 
-  // 2. DYNAMIC PORT: Let the cloud provider assign the port, fallback to 3001
-  const port = process.env.PORT || 3001;
-  await app.listen(port);
-
-  console.log(`Backend is running on port: ${port}`);
+    await app.init();
+    cachedApp = app;
+  }
+  return server;
 }
-bootstrap().catch((err) => console.error(err));
+
+// 2. Export the Serverless Handler for Vercel
+export default async function handler(req: any, res: any) {
+  const app = await bootstrap();
+  return app(req, res);
+}
+
+// 3. Keep the local server running for development
+if (process.env.NODE_ENV !== 'production') {
+  bootstrap().then(() => {
+    const port = process.env.PORT || 3001;
+    server.listen(port, () => {
+      console.log(`Backend is running locally on port: ${port}`);
+    });
+  });
+}
