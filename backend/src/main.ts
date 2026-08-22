@@ -5,6 +5,8 @@ import { ValidationPipe } from '@nestjs/common';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  app.setGlobalPrefix('api');
+
   // 1. DYNAMIC CORS: Trust the production URL, fallback to localhost
   app.enableCors({
     origin: process.env.FRONTEND_URL || 'http://localhost:3000',
