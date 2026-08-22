@@ -173,13 +173,12 @@ export function KanbanBoard({
       setTasks(newTasks);
 
       axios
-        axios
-          .patch(`${process.env.NEXT_PUBLIC_API_URL}/tasks/${draggableId}`, {
-            status: destination.droppableId,
-          })
-          .catch((error) => {
-            console.error("Failed to update task status in DB:", error);
-          });
+        .patch(`${process.env.NEXT_PUBLIC_API_URL}/tasks/${draggableId}`, {
+          status: destination.droppableId,
+        })
+        .catch((error) => {
+          console.error("Failed to update task status in DB:", error);
+        });
     }
   };
 
